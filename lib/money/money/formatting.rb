@@ -186,6 +186,11 @@ class Money
       if rules[:no_cents_if_whole] && cents % currency.subunit_to_unit == 0
         formatted = "#{self.to_s.to_i}"
       end
+      
+      if rules[:force_k] == true && self.amount >= 10000
+        formatted = "#{(self.amount / 1000.0).round(0)}K"
+      end
+
 
       symbol_position =
         if rules.has_key?(:symbol_position)
