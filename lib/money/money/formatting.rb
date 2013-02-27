@@ -229,7 +229,7 @@ class Money
 
       # Apply thousands_separator
       formatted.gsub!(regexp_format(formatted, rules, decimal_mark, symbol_value),
-                      "\\1#{thousands_separator_value}")
+                      "\\1#{thousands_separator_value}") if self.amount >= 10000
 
       if rules[:with_currency]
         formatted << " "
