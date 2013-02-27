@@ -225,7 +225,7 @@ class Money
       # Determine thousands_separator
       if rules.has_key?(:thousands_separator)
         thousands_separator_value = rules[:thousands_separator] || ''
-        if self.amount >= 10000
+        if self.amount < 10000
           thousands_separator_value = ''
         end
       end
