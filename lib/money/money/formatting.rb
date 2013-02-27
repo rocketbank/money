@@ -225,10 +225,8 @@ class Money
       # Determine thousands_separator
       if rules.has_key?(:thousands_separator)
         thousands_separator_value = rules[:thousands_separator] || ''
-        if self.amount < 10000
-          thousands_separator_value = ''
-        end
       end
+      thousands_separator_value = '' if self.amount < 10_000
 
       # Apply thousands_separator
       formatted.gsub!(regexp_format(formatted, rules, decimal_mark, symbol_value),
