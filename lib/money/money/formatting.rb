@@ -187,7 +187,7 @@ class Money
         formatted = "#{self.to_s.to_i}"
       end
       
-      if rules[:force_k] == true && self.amount >= 10000
+      if rules[:force_k] == true
         formatted = "#{(self.amount / 1000.0).round(0)}K"
       end
 
