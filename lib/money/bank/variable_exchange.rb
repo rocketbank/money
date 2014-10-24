@@ -30,7 +30,7 @@ class Money
     #   bank.exchange_with(c2, "USD") #=> #<Money @fractional=803115>
     class VariableExchange < Base
 
-      attr_reader :rates
+      attr_reader :rates, :mutex
 
       # Available formats for importing/exporting rates.
       RATE_FORMATS = [:json, :ruby, :yaml]
@@ -84,27 +84,38 @@ class Money
       #
       #   # Exchange 100 CAD to USD:
       #   bank.exchange_with(c2, "USD") #=> #<Money @fractional=803115>
-      def exchange_with(from, to_currency)
-        return from if same_currency?(from.currency, to_currency)
-
-        rate = get_rate(from.currency, to_currency)
-        unless rate
-          raise UnknownRate, "No conversion rate known for '#{from.currency.iso_code}' -> '#{to_currency}'"
+      def exchange_with(from, to_currency, &block)
+        to_currency = Currency.wrap(to_currency)
+        if from.currency == to_currency
+          from
+        else
+          if rate = get_rate(from.currency, to_currency)
+            fractional = calculate_fractional(from, to_currency)
+            Money.new(
+              exchange(fractional, rate, &block), to_currency
+            )
+          else
+            raise UnknownRate, "No conversion rate known for '#{from.currency.iso_code}' -> '#{to_currency}'"
+          end
         end
-        _to_currency_  = Currency.wrap(to_currency)
+      end
 
-        fractional = BigDecimal.new(from.fractional.to_s) / (BigDecimal.new(from.currency.subunit_to_unit.to_s) / BigDecimal.new(_to_currency_.subunit_to_unit.to_s))
+      def calculate_fractional(from, to_currency)
+        BigDecimal.new(from.fractional.to_s) / (
+          BigDecimal.new(from.currency.subunit_to_unit.to_s) /
+          BigDecimal.new(to_currency.subunit_to_unit.to_s)
+        )
+      end
 
-        ex = fractional * BigDecimal.new(rate.to_s)
-        ex = ex.to_f
-        ex = if block_given?
-               yield ex
-             elsif @rounding_method
-               @rounding_method.call(ex)
-             else
-               ex.to_s.to_i
-             end
-        Money.new(ex, _to_currency_)
+      def exchange(fractional, rate, &block)
+        ex = (fractional * BigDecimal.new(rate.to_s)).to_f
+        if block_given?
+          yield ex
+        elsif @rounding_method
+          @rounding_method.call(ex)
+        else
+          ex.to_s.to_i
+        end
       end
 
       # Registers a conversion rate and returns it (uses +#set_rate+).
@@ -129,6 +140,8 @@ class Money
       # @param [Currency, String, Symbol] from Currency to exchange from.
       # @param [Currency, String, Symbol] to Currency to exchange to.
       # @param [Numeric] rate Rate to use when exchanging currencies.
+      # @param [Hash] opts Options hash to set special parameters
+      # @option opts [Boolean] :without_mutex disables the usage of a mutex
       #
       # @return [Numeric]
       #
@@ -136,8 +149,13 @@ class Money
       #   bank = Money::Bank::VariableExchange.new
       #   bank.set_rate("USD", "CAD", 1.24515)
       #   bank.set_rate("CAD", "USD", 0.803115)
-      def set_rate(from, to, rate)
-        @mutex.synchronize { @rates[rate_key_for(from, to)] = rate }
+      def set_rate(from, to, rate, opts = {})
+        fn = -> { @rates[rate_key_for(from, to)] = rate }
+        if opts[:without_mutex]
+          fn.call
+        else
+          @mutex.synchronize { fn.call }
+        end
       end
 
       # Retrieve the rate for the given currencies. Uses +Mutex+ to synchronize
@@ -145,6 +163,8 @@ class Money
       #
       # @param [Currency, String, Symbol] from Currency to exchange from.
       # @param [Currency, String, Symbol] to Currency to exchange to.
+      # @param [Hash] opts Options hash to set special parameters
+      # @option opts [Boolean] :without_mutex disables the usage of a mutex
       #
       # @return [Numeric]
       #
@@ -155,8 +175,13 @@ class Money
       #
       #   bank.get_rate("USD", "CAD") #=> 1.24515
       #   bank.get_rate("CAD", "USD") #=> 0.803115
-      def get_rate(from, to)
-        @mutex.synchronize { @rates[rate_key_for(from, to)] }
+      def get_rate(from, to, opts = {})
+        fn = -> { @rates[rate_key_for(from, to)] }
+        if opts[:without_mutex]
+          fn.call
+        else
+          @mutex.synchronize { fn.call }
+        end
       end
 
       # Return the known rates as a string in the format specified. If +file+
@@ -165,6 +190,8 @@ class Money
       #
       # @param [Symbol] format Request format for the resulting string.
       # @param [String] file Optional file location to write the rates to.
+      # @param [Hash] opts Options hash to set special parameters
+      # @option opts [Boolean] :without_mutex disables the usage of a mutex
       #
       # @return [String]
       #
@@ -177,12 +204,12 @@ class Money
       #
       #   s = bank.export_rates(:json)
       #   s #=> "{\"USD_TO_CAD\":1.24515,\"CAD_TO_USD\":0.803115}"
-      def export_rates(format, file=nil)
+      def export_rates(format, file = nil, opts = {})
         raise Money::Bank::UnknownRateFormat unless
           RATE_FORMATS.include? format
 
         s = ""
-        @mutex.synchronize {
+        fn = -> {
           s = case format
               when :json
                 JSON.dump(@rates)
@@ -196,6 +223,11 @@ class Money
             File.open(file, "w") {|f| f.write(s) }
           end
         }
+        if opts[:without_mutex]
+          fn.call
+        else
+          @mutex.synchronize { fn.call }
+        end
         s
       end
 
@@ -204,6 +236,8 @@ class Money
       #
       # @param [Symbol] format The format of +s+.
       # @param [String] s The rates string.
+      # @param [Hash] opts Options hash to set special parameters
+      # @option opts [Boolean] :without_mutex disables the usage of a mutex
       #
       # @return [self]
       #
@@ -216,11 +250,11 @@ class Money
       #
       #   bank.get_rate("USD", "CAD") #=> 1.24515
       #   bank.get_rate("CAD", "USD") #=> 0.803115
-      def import_rates(format, s)
+      def import_rates(format, s, opts = {})
         raise Money::Bank::UnknownRateFormat unless
           RATE_FORMATS.include? format
 
-        @mutex.synchronize {
+        fn = -> {
           @rates = case format
                    when :json
                      JSON.load(s)
@@ -230,6 +264,11 @@ class Money
                      YAML.load(s)
                    end
         }
+        if opts[:without_mutex]
+          fn.call
+        else
+          @mutex.synchronize { fn.call }
+        end
         self
       end
 

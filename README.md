@@ -1,6 +1,16 @@
 # RubyMoney - Money
 
-[![Gem Version](https://badge.fury.io/rb/money.png)](http://badge.fury.io/rb/money) [![Build Status](https://travis-ci.org/RubyMoney/money.png?branch=master)](https://travis-ci.org/RubyMoney/money)
+[![Gem Version](https://badge.fury.io/rb/money.png)](http://badge.fury.io/rb/money)
+[![Build Status](https://travis-ci.org/RubyMoney/money.png?branch=master)](https://travis-ci.org/RubyMoney/money)
+[![Code Climate](https://codeclimate.com/github/RubyMoney/money.png)](https://codeclimate.com/github/RubyMoney/money)
+[![Coverage Status](https://coveralls.io/repos/RubyMoney/money/badge.png?branch=master)](https://coveralls.io/r/RubyMoney/money?branch=master)
+[![Inline docs](http://inch-ci.org/github/RubyMoney/money.png)](http://inch-ci.org/github/RubyMoney/money)
+[![Dependency Status](https://gemnasium.com/RubyMoney/money.png)](https://gemnasium.com/RubyMoney/money)
+[![License](http://img.shields.io/license/MIT.png?color=green)](http://opensource.org/licenses/MIT)
+
+:warning: Please read the [migration notes](#migration-notes) before upgrading to a new major version.
+
+If you miss String parsing, check out the new [monetize gem](https://github.com/RubyMoney/monetize).
 
 ## Contributing
 
@@ -8,7 +18,7 @@ See the [Contribution Guidelines](https://github.com/RubyMoney/money/blob/master
 
 ## Introduction
 
-This library aids one in handling money and different currencies.
+A Ruby Library for dealing with money and currency conversion.
 
 ### Features
 
@@ -21,8 +31,6 @@ This library aids one in handling money and different currencies.
 - Represents currency as `Money::Currency` instances providing an high level of
   flexibility.
 - Provides APIs for exchanging money from one currency to another.
-- Has the ability to parse a money and currency strings
-  into the corresponding Money/Currency object.
 
 ### Resources
 
@@ -34,7 +42,7 @@ This library aids one in handling money and different currencies.
 
 - Your app must use UTF-8 to function with this library. There are a
   number of non-ASCII currency attributes.
-- This app requires Ruby 1.9 and JSON. If you're using JRuby < 1.7.0
+- This app requires JSON. If you're using JRuby < 1.7.0
   you'll need to add `gem "json"` to your Gemfile or similar.
 
 ## Downloading
@@ -71,12 +79,6 @@ Money.new(1000, "USD") - Money.new(200, "USD") == Money.new(800, "USD")
 Money.new(1000, "USD") / 5                     == Money.new(200, "USD")
 Money.new(1000, "USD") * 5                     == Money.new(5000, "USD")
 
-# Assumptive Currencies
-Money.assume_from_symbol = true
-Money.parse("$100") == Money.new(10000, "USD")
-Money.parse("€100") == Money.new(10000, "EUR")
-Money.parse("£100") == Money.new(10000, "GBP")
-
 # Currency conversions
 some_code_to_setup_exchange_rates
 Money.new(1000, "USD").exchange_to("EUR") == Money.new(some_value, "EUR")
@@ -112,7 +114,7 @@ curr = {
   :iso_numeric     => "840",
   :name            => "United States Dollar",
   :symbol          => "$",
-  :subunit         => "Cent"
+  :subunit         => "Cent",
   :subunit_to_unit => 100,
   :separator       => ".",
   :delimiter       => ","
@@ -238,6 +240,13 @@ There is nothing stopping you from creating bank objects which scrapes
 Money.default_bank = ExchangeBankWhichScrapesXeDotCom.new
 ```
 
+If you wish to disable automatic currency conversion to prevent arithmetic when
+currencies don't match:
+
+``` ruby
+Money.disallow_currency_conversion!
+```
+
 ### Implementations
 
 The following is a list of Money.gem compatible currency exchange rate
@@ -249,9 +258,55 @@ implementations.
 - [nbrb_currency](https://github.com/slbug/nbrb_currency)
 - [money-open-exchange-rates](https://github.com/spk/money-open-exchange-rates)
 - [money-historical-bank](https://github.com/atwam/money-historical-bank)
+- [russian_central_bank](https://github.com/rmustafin/russian_central_bank)
 
 ## Ruby on Rails
 
 To integrate money in a Rails application use [money-rails](http://github.com/RubyMoney/money-rails).
 
-For depreceated methods of integrating with Rails, check [the wiki](https://github.com/RubyMoney/money/wiki).
+For deprecated methods of integrating with Rails, check [the wiki](https://github.com/RubyMoney/money/wiki).
+
+## I18n
+
+If you want thousands seperator and decimal mark to be same across all
+currencies this can be defined in your `I18n` translation files.
+
+In an rails application this may look like:
+```yml
+# config/locale/en.yml
+en:
+  number:
+    format:
+      delimeter: ","
+      separator: "."
+  # or
+  number:
+    currency:
+      format:
+        delimeter: ","
+        separator: "."
+```
+
+For this example `Money.new(123456789, "SEK").format` will return `1,234,567.89
+kr` which otherwise will return `1 234 567,89 kr`.
+
+If you wish to disable this feature:
+``` ruby
+Money.use_i18n = false
+```
+
+## Migration Notes
+
+#### Version 6.0.0
+
+- The `Money#dollars` and `Money#amount` methods now return instances of
+  `BigDecimal` rather than `Float`. We should avoid representing monetary
+  values with floating point types so to avoid a whole class of errors relating
+  to lack of precision. There are two migration options for this change:
+  * The first is to test your application and where applicable update the
+    application to accept a `BigDecimal` return value. This is the recommended
+    path.
+  * The second is to migrate from the `#amount` and `#dollars` methods to use
+    the `#to_f` method instead. This option should only be used where `Float`
+    is the desired type and nothing else will do for your application's
+    requirements.

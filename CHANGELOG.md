@@ -1,13 +1,80 @@
 # Changelog
 
-## master
+## Next release
+ - Add method to round a given amount of money to the nearest possible value in cash (aka Swedish rounding).
+ - Fixed the subunit_to_unit values of the CLP and KRW currencies
+ - Add option for `disambiguate` symbols for formatting
+ - Fixed the subunit_to_unit values of the VND currency
+ - Fix formatting of NGN - show symbol before amount
+ - Switch default and alternate symbols for RUB currency
+ - Fix symbol for TRY currency
+
+## 6.2.1
+ - Ensure set is loaded
+
+## 6.2.0
+ - Fixes formatting error when both `thousands_separator` and `decimal_mark` was added to Money#format as options.
+ - Add Money#to_i which returns the whole part of the value. i.e.
+   Money.new(100, "USD").to_i # => 1
+ - Fix output on Ukrainian Hryvnia symbol in HTML.
+ - Add documentation about i18n in README.
+ - Update iso code, symbol, subunit for the new Turkmenistani manat (GH-181)
+ - Performance Improvements (1.99x faster on MRI, 1.85x on Rubinius, 41.4x faster on JRuby)
+ - Money can now add and subtract Fixnum 0
+ - Money#new uses Money.default_currency if currency arg is nil (GH-410)
+ - Fixed formatting of NOK, putting the symbol after numbers
+ - Fixed issue where rounded_infinite_precision formatting fails for some localized currencies (GH-422)
+
+## 6.1.1
+ - Remove lingering Monetize call
+
+## 6.1.0
+ - Remove deprecated methods.
+ - Fix issue with block form of rounding_mode.
+
+## 6.0.1
+ - Deprecated methods lists caller on print out for easier updating.
+ - Added support for Money::Currency#to_str and Money::Currency#to_sym
+ - Added ability to temporally change the rounding methond inside a given block
+ - Replaced parsing and core extensions with the monetize gem
+
+## 6.0.0
+- Fix BTC subunit
+- New option :sign_positive to add a + sign to positive numbers
+- Only allow to multiply a money by a number (int, float)
+- Fix typo
+- Wrap the currency symbol in a span if :html is specified in the rules
+- Added Money::Currency.all method
+- Allow combined comparison operator to handle zero values without rates
+- Added Money::Currency.unregister method
+- Works on Ruby 1.8.7
+- Update deps
+- Depreciate Money.parse
+- Passing :symbol => false when formatting 'JPY' currency in :ja locale
+  will work as expected
+- Divide now obeys the specified rounding mode
+- Add Money#round method. This is helpful when working in infinite_precision mode and would like to perform rounding at specific points in your work flow.
+- In infinite precision mode, deserialized Money objects no longer return Float values from the `fractional` method.
+- Changed `thousands_separator` for Swedish Krona from dot to blank space.
+- Allow mathematical operations with first argument being not an instance of Money (eg. 2 * money instead of money * 2).
+- Money#dollars and Money#amount methods return numbers of type BigDecimal.
+- Change Money.from_bigdecimal (and in that way .to_money too) to keep precision when using `Money.infinite_precision = true`
+- Add :rounded_infinite_precision option to .format
+- Changed the New Taiwan Dollar symbol position from after the amount to before the amount.
+- Passing a Money instance to the Money constructor will obtain a new Money object with the same property values as the original
+- Add deprecation warning to comparators
+- Add Money.disallow_currency_conversion! option
+- Allow to inherits from `Money`
+
+## 5.1.1
 
 - Added :sign_before_symbol option to format negative numbers as -£1 rather than £-1
 - Ensure BigDecimal.new always receives a string - compatibility fix for ruby-1.9.2-p320
 - Update Maldivian Currency to MVR and fix ރ. to be ރ
 - Add exponent to currency
 - Add find_numeric to find currencies by ISO 4217 numeric code.
-- Fixed regression where thousands seperator was missing on certain currencies. (GH-245)
+- Fixed regression where thousands separator was missing on certain currencies. (GH-245)
+- Added :symbol_before_without_space option to add a space between currency symbol and amount.
 
 ## 5.1.0
 
@@ -41,6 +108,7 @@
 - TravisBot is now watching Pull Request!!! (GH-171)
 - Minor code cleaning
 - Remove subunit from South Korean won (KRW)
+- Fixed bug where bankers rounding wasn't being used everywhere.
 
 ## 5.0.0
 
@@ -76,11 +144,9 @@
 - Fixed position of Philippine peso sign (GH-124)
 - Fixed position of Danish currency sign (GH-127)
 
-
 ## 4.0.1
 
 - Add missing config dir.
-
 
 Money 4.0.0
 ===========
@@ -179,7 +245,7 @@ Features
    - Replace separator with decimal_mark
    - Added symbol_first and html_entity
  - Added allocation algorithm for fair(ish) splitting of money between parties
-   without loosing pennies (thanks Tobias Luetke)
+   without losing pennies (thanks Tobias Luetke)
 
 Bugfixes
 --------
@@ -268,7 +334,6 @@ Bugfixes
    ([#issue/26](http://github.com/RubyMoney/money/issues/26))
  - Use BigDecimal when floating point calculations are needed.
  - Ruby 1.9.2 compatibility enhancements.
-
 
 Money 3.1.0
 ===========

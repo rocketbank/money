@@ -1,11 +1,14 @@
+require "coveralls"
+Coveralls.wear!
+
 $LOAD_PATH.unshift File.dirname(__FILE__)
-require 'rspec'
-require 'money'
-require 'support/default_currency_helper'
+require "rspec"
+require "money"
+
+I18n.enforce_available_locales = false
 
 RSpec.configure do |c|
-  c.order = "rand"
-  c.include DefaultCurrencyHelper
+  c.order = :random
 end
 
 def silence_warnings

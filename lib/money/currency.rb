@@ -1,18 +1,19 @@
 # encoding: utf-8
 
-require 'json'
+require "json"
+require "money/currency/loader"
+require "money/currency/heuristics"
 
 class Money
 
   # Represents a specific currency unit.
+  #
+  # @see http://en.wikipedia.org/wiki/Currency
+  # @see http://iso4217.net/
   class Currency
     include Comparable
-
-    require "money/currency/loader"
-    extend  Loader
-
-    require "money/currency/heuristics"
-    extend  Heuristics
+    extend Money::Currency::Loader
+    extend Money::Currency::Heuristics
 
     # Thrown when an unknown currency is requested.
     class UnknownCurrency < StandardError; end
@@ -32,7 +33,9 @@ class Money
       #   Money::Currency.find(:foo) #=> nil
       def find(id)
         id = id.to_s.downcase.to_sym
-        new(id) if self.table[id]
+        new(id)
+      rescue UnknownCurrency
+        nil
       end
 
       # Lookup a currency with given +num+ as an ISO 4217 numeric and returns an
@@ -48,8 +51,10 @@ class Money
       #   Money::Currency.find_by_iso_numeric('001') #=> nil
       def find_by_iso_numeric(num)
         num = num.to_s
-        id, garbage = self.table.find{|key, currency| currency[:iso_numeric] == num}
-        new(id) if self.table[id]
+        id, _ = self.table.find{|key, currency| currency[:iso_numeric] == num}
+        new(id)
+      rescue UnknownCurrency
+        nil
       end
 
       # Wraps the object in a +Currency+ unless it's already a +Currency+
@@ -90,6 +95,16 @@ class Money
         @table ||= load_currencies
       end
 
+      # List the currencies imported and registered
+      # @return [Array]
+      #
+      # @example
+      #   Money::Currency.iso_codes()
+      #   [#<Currency ..USD>, 'CAD', 'EUR']...
+      def all
+        table.keys.map {|curr| Currency.new(curr)}.sort_by(&:priority)
+      end
+
       # We need a string-based validator before creating an unbounded number of symbols.
       # http://www.randomhacks.net/articles/2007/01/20/13-ways-of-looking-at-a-ruby-symbol#11
       # https://github.com/RubyMoney/money/issues/132
@@ -103,80 +118,49 @@ class Money
         @stringified_keys = stringify_keys
       end
 
+      def unregister(curr)
+        key = curr[:iso_code].downcase.to_sym
+        @table.delete(key)
+        @stringified_keys = stringify_keys
+      end
+
       private
 
       def stringify_keys
-        table.keys.map{|k| k.to_s.downcase}
+        table.keys.each_with_object(Set.new) { |k, set| set.add(k.to_s.downcase) }
       end
     end
 
-    # The symbol used to identify the currency, usually the lowercase
-    # +iso_code+ attribute.
-    #
-    # @return [Symbol]
-    attr_reader :id
+    # @attr_reader [Symbol] id The symbol used to identify the currency,
+    # usually the lowercase +iso_code+ attribute.
+    # @attr_reader [Integer] priority A numerical value you can use to
+    # sort/group the currency list.
+    # @attr_reader [String] iso_code The international 3-letter code as defined
+    # by the ISO 4217 standard.
+    # @attr_reader [String] iso_numeric The international 3-numeric code as
+    # defined by the ISO 4217 standard.
+    # @attr_reader [String] name The currency name.
+    # @attr_reader [String] symbol The currency symbol (UTF-8 encoded).
+    # @attr_reader [String] disambiguate_symbol Alternative currency used if symbol is ambiguous
+    # @attr_reader [String] html_entity The html entity for the currency symbol
+    # @attr_reader [String] subunit The name of the fractional monetary unit.
+    # @attr_reader [Integer] subunit_to_unit The proportion between the unit
+    # and the subunit
+    # @attr_reader [String] decimal_mark The decimal mark, or character used to
+    # separate the whole unit from the subunit.
+    # @attr_reader [String] The character used to separate thousands grouping
+    # of the whole unit.
+    # @attr_reader [Boolean] symbol_first Should the currency symbol precede
+    # the amount, or should it come after?
+    # @attr_reader [Integer] smallest_denomination Smallest amount of cash 
+    # possible (in the subunit of this currency)
 
-    # A numerical value you can use to sort/group the currency list.
-    #
-    # @return [Integer]
-    attr_reader :priority
+    attr_reader :id, :priority, :iso_code, :iso_numeric, :name, :symbol,
+      :disambiguate_symbol, :html_entity, :subunit, :subunit_to_unit, :decimal_mark,
+      :thousands_separator, :symbol_first, :smallest_denomination
 
-    # The international 3-letter code as defined by the ISO 4217 standard.
-    #
-    # @return [String]
-    attr_reader :iso_code
-    #
-    # The international 3-numeric code as defined by the ISO 4217 standard.
-    #
-    # @return [String]
-    attr_reader :iso_numeric
-
-    # The currency name.
-    #
-    # @return [String]
-    attr_reader :name
-
-    # The currency symbol (UTF-8 encoded).
-    #
-    # @return [String]
-    attr_reader :symbol
-
-    # The html entity for the currency symbol
-    #
-    # @return [String]
-    attr_reader :html_entity
-
-    # The name of the fractional monetary unit.
-    #
-    # @return [String]
-    attr_reader :subunit
-
-    # The proportion between the unit and the subunit
-    #
-    # @return [Integer]
-    attr_reader :subunit_to_unit
-
-    # The number of digits after the decimal separator.
-    #
-    # @return [Float]
-    attr_reader :exponent
-
-    # The decimal mark, or character used to separate the whole unit from the subunit.
-    #
-    # @return [String]
-    attr_reader :decimal_mark
-    alias :separator :decimal_mark
-
-    # The character used to separate thousands grouping of the whole unit.
-    #
-    # @return [String]
-    attr_reader :thousands_separator
-    alias :delimiter :thousands_separator
-
-    # Should the currency symbol precede the amount, or should it come after?
-    #
-    # @return [boolean]
-    attr_reader :symbol_first
+    alias_method :separator, :decimal_mark
+    alias_method :delimiter, :thousands_separator
 
     # Create a new +Currency+ object.
     #
@@ -189,12 +173,26 @@ class Money
     #   Money::Currency.new(:usd) #=> #<Money::Currency id: usd ...>
     def initialize(id)
       id = id.to_s.downcase
-      raise(UnknownCurrency, "Unknown currency `#{id}'") unless self.class.stringified_keys.include?(id)
 
-      @id  = id.to_sym
-      data = self.class.table[@id]
-      data.each_pair do |key, value|
-        instance_variable_set(:"@#{key}", value)
+      if self.class.stringified_keys.include?(id)
+        @id = id.to_sym
+        data = self.class.table[@id]
+        @priority = data[:priority]
+        @iso_code = data[:iso_code]
+        @name = data[:name]
+        @symbol = data[:symbol]
+        @disambiguate_symbol = data[:disambiguate_symbol]
+        @alternate_symbols = data[:alternate_symbols]
+        @subunit = data[:subunit]
+        @subunit_to_unit = data[:subunit_to_unit]
+        @symbol_first = data[:symbol_first]
+        @html_entity = data[:html_entity]
+        @decimal_mark = data[:decimal_mark]
+        @thousands_separator = data[:thousands_separator]
+        @iso_numeric = data[:iso_numeric]
+        @smallest_denomination = data[:smallest_denomination]
+      else
+        raise UnknownCurrency, "Unknown currency '#{id}'"
       end
     end
 
@@ -228,9 +226,18 @@ class Money
     #   c1 == c1 #=> true
     #   c1 == c2 #=> false
     def ==(other_currency)
-      self.equal?(other_currency) ||
-      self.id == other_currency.id
+      self.equal?(other_currency) || compare_ids(other_currency)
     end
+
+    def compare_ids(other_currency)
+      other_currency_id = if other_currency.is_a?(Currency)
+                            other_currency.id.to_s.downcase
+                          else
+                            other_currency.to_s.downcase
+                          end
+      self.id.to_s.downcase == other_currency_id
+    end
+    private :compare_ids
 
     # Compares +self+ with +other_currency+ and returns +true+ if the are the
     # same or if their +id+ attributes match.
@@ -266,13 +273,13 @@ class Money
     # @example
     #   Money::Currency.new(:usd) #=> #<Currency id: usd ...>
     def inspect
-      "#<#{self.class.name} id: #{id}, priority: #{priority}, symbol_first: #{symbol_first}, thousands_separator: #{thousands_separator}, html_entity: #{html_entity}, decimal_mark: #{decimal_mark}, name: #{name}, symbol: #{symbol}, subunit_to_unit: #{subunit_to_unit}, exponent: #{exponent}, iso_code: #{iso_code}, iso_numeric: #{iso_numeric}, subunit: #{subunit}>"
+      "#<#{self.class.name} id: #{id}, priority: #{priority}, symbol_first: #{symbol_first}, thousands_separator: #{thousands_separator}, html_entity: #{html_entity}, decimal_mark: #{decimal_mark}, name: #{name}, symbol: #{symbol}, subunit_to_unit: #{subunit_to_unit}, exponent: #{exponent}, iso_code: #{iso_code}, iso_numeric: #{iso_numeric}, subunit: #{subunit}, smallest_denomination: #{smallest_denomination}>"
     end
 
     # Returns a string representation corresponding to the upcase +id+
     # attribute.
     #
-    # -–
+    # --
     # DEV: id.to_s.upcase corresponds to iso_code but don't use ISO_CODE for consistency.
     #
     # @return [String]
@@ -284,13 +291,36 @@ class Money
       id.to_s.upcase
     end
 
+    # Returns a string representation corresponding to the upcase +id+
+    # attribute. Useful in cases where only implicit conversions are made.
+    #
+    # @return [String]
+    #
+    # @example
+    #   Money::Currency.new(:usd).to_str #=> "USD"
+    #   Money::Currency.new(:eur).to_str #=> "EUR"
+    def to_str
+      id.to_s.upcase
+    end
+
+    # Returns a symbol representation corresponding to the upcase +id+
+    # attribute.
+    #
+    # @return [Symbol]
+    #
+    # @example
+    #   Money::Currency.new(:usd).to_sym #=> :USD
+    #   Money::Currency.new(:eur).to_sym #=> :EUR
+    def to_sym
+      id.to_s.upcase.to_sym
+    end
+
     # Conversation to +self+.
     #
     # @return [self]
     def to_currency
       self
     end
-
 
     # Returns currency symbol or iso code for currencies with no symbol.
     #
@@ -312,31 +342,24 @@ class Money
 
     # Cache decimal places for subunit_to_unit values.  Common ones pre-cached.
     def self.decimal_places_cache
-      @decimal_places_cache ||= {
-        1 => 0,
-        10 => 1,
-        100 => 2,
-        1000 => 3
-      }
+      @decimal_places_cache ||= {1 => 0, 10 => 1, 100 => 2, 1000 => 3}
     end
 
     # The number of decimal places needed.
     #
     # @return [Integer]
     def decimal_places
-      cache = self.class.decimal_places_cache
-      places  = cache[subunit_to_unit]
-      unless places
-        places = calculate_decimal_places(subunit_to_unit)
-        cache[subunit_to_unit] = places
-      end
-      places
+      cache[subunit_to_unit] ||= calculate_decimal_places(subunit_to_unit)
     end
+
+    def cache
+      self.class.decimal_places_cache
+    end
+    private :cache
 
     # If we need to figure out how many decimal places we need we
     # use repeated integer division.
     def calculate_decimal_places(num)
-      return 0 if num == 1
       i = 1
       while num >= 10
         num /= 10
@@ -345,6 +368,5 @@ class Money
       i
     end
     private :calculate_decimal_places
-
   end
 end

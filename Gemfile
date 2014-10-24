@@ -1,6 +1,7 @@
-source :rubygems
+source "https://rubygems.org"
 
-gem "rake"
-gem "json", :platform => :jruby
+gem "coveralls", :require => false
+gem "json", :platform => [:jruby, :mri_18]
+gem "pry", :require => false
 
 gemspec

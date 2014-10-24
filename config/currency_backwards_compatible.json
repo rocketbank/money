@@ -11,13 +11,15 @@
     "html_entity": "",
     "decimal_mark": ".",
     "thousands_separator": ",",
-    "iso_numeric": "233"
+    "iso_numeric": "233",
+    "smallest_denomination": 5
   },
   "ghc": {
     "priority": 100,
     "iso_code": "GHS",
     "name": "Ghanaian Cedi",
     "symbol": "₵",
+    "disambiguate_symbol": "GH₵",
     "alternate_symbols": ["GH₵"],
     "subunit": "Pesewa",
     "subunit_to_unit": 100,
@@ -25,7 +27,23 @@
     "html_entity": "&#x20B5;",
     "decimal_mark": ".",
     "thousands_separator": ",",
-    "iso_numeric": "288"
+    "iso_numeric": "288",
+    "smallest_denomination": 1
+  },
+  "mtl": {
+    "priority": 100,
+    "iso_code": "MTL",
+    "name": "Maltese Lira",
+    "symbol": "₤",
+    "alternate_symbols": ["Lm"],
+    "subunit": "Cent",
+    "subunit_to_unit": 100,
+    "symbol_first": true,
+    "html_entity": "&#x00A3;",
+    "decimal_mark": ".",
+    "thousands_separator": ",",
+    "iso_numeric": "470",
+    "smallest_denomination": 1
   },
   "tmm": {
     "priority": 100,
@@ -39,13 +57,15 @@
     "html_entity": "",
     "decimal_mark": ".",
     "thousands_separator": ",",
-    "iso_numeric": "795"
+    "iso_numeric": "795",
+    "smallest_denomination": 1
   },
   "yen": {
     "priority": 100,
     "iso_code": "JPY",
     "name": "Japanese Yen",
     "symbol": "¥",
+    "disambiguate_symbol": "JPY",
     "alternate_symbols": ["円", "圓"],
     "subunit": "Sen",
     "subunit_to_unit": 100,
@@ -53,13 +73,15 @@
     "html_entity": "&#x00A5;",
     "decimal_mark": ".",
     "thousands_separator": ",",
-    "iso_numeric": ""
+    "iso_numeric": "",
+    "smallest_denomination": 100
   },
   "zwd": {
     "priority": 100,
     "iso_code": "ZWD",
     "name": "Zimbabwean Dollar",
     "symbol": "$",
+    "disambiguate_symbol": "ZWD",
     "alternate_symbols": ["Z$"],
     "subunit": "Cent",
     "subunit_to_unit": 100,
@@ -67,13 +89,15 @@
     "html_entity": "$",
     "decimal_mark": ".",
     "thousands_separator": ",",
-    "iso_numeric": "716"
+    "iso_numeric": "716",
+    "smallest_denomination": 100
   },
   "zwl": {
     "priority": 100,
     "iso_code": "ZWL",
     "name": "Zimbabwean Dollar",
     "symbol": "$",
+    "disambiguate_symbol": "ZWL",
     "alternate_symbols": ["Z$"],
     "subunit": "Cent",
     "subunit_to_unit": 100,
@@ -81,13 +105,15 @@
     "html_entity": "$",
     "decimal_mark": ".",
     "thousands_separator": ",",
-    "iso_numeric": "932"
+    "iso_numeric": "932",
+    "smallest_denomination": 100
   },
   "zwn": {
     "priority": 100,
     "iso_code": "ZWN",
     "name": "Zimbabwean Dollar",
     "symbol": "$",
+    "disambiguate_symbol": "ZWN",
     "alternate_symbols": ["Z$"],
     "subunit": "Cent",
     "subunit_to_unit": 100,
@@ -95,13 +121,15 @@
     "html_entity": "$",
     "decimal_mark": ".",
     "thousands_separator": ",",
-    "iso_numeric": "942"
+    "iso_numeric": "942",
+    "smallest_denomination": 100
   },
   "zwr": {
     "priority": 100,
     "iso_code": "ZWR",
     "name": "Zimbabwean Dollar",
     "symbol": "$",
+    "disambiguate_symbol": "ZWR",
     "alternate_symbols": ["Z$"],
     "subunit": "Cent",
     "subunit_to_unit": 100,
@@ -109,6 +137,7 @@
     "html_entity": "$",
     "decimal_mark": ".",
     "thousands_separator": ",",
-    "iso_numeric": "935"
+    "iso_numeric": "935",
+    "smallest_denomination": 100
   }
 }
